@@ -1,17 +1,17 @@
 # 🤖 AI 影像識別自動點名系統 (AI Face Recognition Automated Attendance System)
 
-[![React Version](https://img.shields.io/badge/react-v19.0.0-blue.svg)](https://react.dev/)
-[![Vite Version](https://img.shields.io/badge/vite-v6.0.0-purple.svg)](https://vite.dev/)
-[![Supabase Support](https://img.shields.io/badge/supabase-v2.0-green.svg)](https://supabase.com/)
+[![React Version](https://img.shields.io/badge/react-v19.2.6-blue.svg)](https://react.dev/)
+[![Vite Version](https://img.shields.io/badge/vite-v8.0.12-purple.svg)](https://vite.dev/)
+[![Supabase Support](https://img.shields.io/badge/supabase-v2.108.2-green.svg)](https://supabase.com/)
 [![License](https://img.shields.io/badge/license-CC0--1.0-lightgrey.svg)](LICENSE)
 
-本專案為 **AI 影像識別自動點名系統** 的 React 前端管理面板 (Dashboard)。結合了進階的 AI 人臉識別、物聯網硬體（Ameba 開發板與相機）與 Supabase 雲端資料庫，實現全自動、無感且即時的課堂/會議點名解決方案。
+本專案為 **AI 影像識別自動點名系統** 的 React 前端管理面板 (Dashboard)。整合了物聯網硬體（Ameba 相機開發板）、邊緣端 AI 臉部識別（YOLOv8 + face_recognition）以及 Supabase 雲端資料庫，實現全自動、無感且即時的智慧點名解決方案。
 
 ---
 
-## 🗺️ 系統架構圖 (System Architecture)
+## 🗺️ 系統架構與資料流 (System Architecture)
 
-本系統由**前端控制台**、**雲端資料庫**、與**終端硬體/AI 識別程式**三大部分組成。架構互動流程如下：
+本系統由**前端控制台**、**雲端資料庫**、與**終端硬體/AI 辨識程式**三大部分組成。架構互動流程如下：
 
 ```mermaid
 graph TD
@@ -39,7 +39,7 @@ graph TD
     B -->|HTTP POST JSON| F
     G -->|取得學生與歷史| D & E & F
     H -->|註冊學生 / 拍攝上傳特徵| D
-    I -->|儲存 API Key 至 Local| G
+    I -->|儲存 API Key 至 Local / .env| G
     F -->|Realtime WebSocket 訂閱| G
 ```
 
@@ -48,57 +48,49 @@ graph TD
 ## ✨ 核心功能 (Key Features)
 
 ### 1. 📊 實時點名儀表板 (Dashboard)
-- **數據可視化**：以毛玻璃美學 (Glassmorphism) 卡片展示今日出勤率、應到人數、已簽到與缺席人數。
-- **動態更新**：結合 Supabase Realtime 機制，當硬體端或 YOLO 辨識上傳簽到紀錄時，儀表板將**不發送重新整理請求**即時渲染最新簽到狀態。
+* **數據可視化**：以毛玻璃美學 (Glassmorphism) 卡片展示今日出勤率、應到人數、已簽到與缺席人數。
+* **即時渲染**：結合 **Supabase Realtime** 功能。當邊緣辨識端（例如執行中的 YOLO 腳本）將新的點名紀錄寫入雲端資料庫時，儀表板會**透過 WebSocket 即時渲染**最新簽到狀態，無需重新整理網頁。
 
-### 2. 📷 點名相機與模擬 (Camera & Recognition)
-- **相機串流**：開啟本地相機，模擬教室點名相機的視訊畫面。
-- **辨識框渲染**：模擬 YOLOv8 運作，自動在畫面中框選偵測到的人臉，並依據置信度 (Confidence) 顯示學生姓名。
-- **安全防範**：若偵測到未登錄人臉，系統會發出紅色邊框警報，並透過 Web Audio API 發送警報提示音。
+### 2. 📷 本地點名相機與模擬 (Camera & Recognition)
+* **相機串流**：可直接開啟本地視訊鏡頭，模擬教室現場點名相機的視訊畫面。
+* **人臉框標記**：模擬 YOLOv8 的人臉辨識框，依據辨識置信度在人臉周圍繪製綠色邊框並標示姓名與學號。
+* **安全性警告**：若偵測到未註冊的陌生人臉，系統會框選紅色警告標籤，並透過網頁底層 Web Audio API 合成警報提示音。
 
-### 3. 👥 學生管理與 128 維特徵錄入 (Student Registration)
-- **名單管理**：支援即時搜尋學號與姓名、查詢特徵錄入狀態，並提供刪除功能。
-- **AI 特徵錄入**：
-  - **相機擷取模式**：在實戰連線模式下，可啟動鏡頭直接拍攝學生人臉，由模擬的神經網絡 (ResNet-128) 進行特徵計算，生成 128 維人臉特徵向量上傳資料庫。
-  - **模擬生成模式**：在展示狀態下，可一鍵隨機生成特徵向量，加速系統功能演示。
+### 3. 👥 學生管理與 128 維特徵註冊 (Student Registration)
+* **特徵值錄入**：支援新增/搜尋/刪除學生，並可在註冊時開啟相機拍攝，由模擬的神經網絡計算出 128 維人臉特徵向量上傳至資料庫。
+* **一鍵模擬生成**：提供快速展示模式，可一鍵為學生生成隨機 128 維特徵值，方便在沒有相機的環境下快速測試。
 
-### 4. 📜 點名歷史紀錄 (Attendance History)
-- 詳細記錄學生簽到時間、出勤狀態（已到、遲到、缺席）與 AI 辨識置信度。
-- 提供一鍵清除與重設資料功能。
-
-### 5. ⚙️ 展示與實戰雙模式切換 (Settings)
-- **展示模擬模式**：完全不需要配置資料庫。所有學生與點名資料均儲存在本地 `LocalStorage` 緩存中，適合離線演示或快速體驗。
-- **Supabase 連線模式**：直接串接雲端 PostgreSQL 資料庫，支援 RLS (Row Level Security) 與 Realtime 即時推播。
-- **自動故障排除**：內建 Supabase 連線診斷器，若連線失敗會自動偵測是「網路錯誤」、「API Key 錯誤」或是「SQL 結構未導入」，並給予精準的繁體中文修復建議。
+### 4. ⚙️ 展示與實戰雙模式切換 (Settings)
+* **展示模擬模式 (Offline/Mock)**：無須任何資料庫配置。所有學生與點名資料均儲存於瀏覽器的 `LocalStorage` 中，適合離線演示或快速功能點檢。
+* **Supabase 連線模式 (Production)**：連結雲端資料庫，支援安全防護（RLS 規則）與 Realtime 即時推播。內建連線診斷工具，若連線失敗會給予精確的繁體中文引導（例如檢查金鑰或 SQL 結構）。
 
 ---
 
 ## 🛠️ 技術棧 (Tech Stack)
 
-- **前端核心**：[React 19](https://react.dev/) + [Vite](https://vite.dev/) (高效編譯與模組熱替換)
-- **雲端資料庫**：[Supabase](https://supabase.com/) (PostgreSQL + PostgREST + WebSockets)
-- **圖示庫**：[Lucide React](https://lucide.dev/) (現代簡約線條圖標)
-- **介面設計**：客製化 Vanilla CSS (整合毛玻璃玻璃質感、CSS 變數主題系統、流暢的微動畫效果與自適應響應式佈局)
-- **提示音效**：Web Audio API (純瀏覽器底層音訊合成，免載入大型 MP3 檔)
+* **前端框架**：[React 19.2](https://react.dev/) + [Vite 8.0](https://vite.dev/) (極速熱重載與打包)
+* **雲端後端**：[Supabase](https://supabase.com/) (PostgreSQL + PostgREST API + WebSockets Realtime)
+* **視覺圖示**：[Lucide React](https://lucide.dev/) (現代簡約圖示)
+* **介面設計**：客製化 Vanilla CSS (包含毛玻璃特效、CSS 變數主題色彩、微動畫與自適應響應式排版)
 
 ---
 
 ## 🗄️ 資料庫結構 (Database Schema)
 
-本專案搭配 Supabase (PostgreSQL) 使用。資料表結構定義於 [/supabase/schema.sql](https://github.com/FocalZoe/attendance-frontend/blob/main/supabase/schema.sql) 中，包含三個核心資料表：
+本專案的 PostgreSQL 資料表定義檔案位於 [supabase/schema.sql](supabase/schema.sql)。結構包含三個核心資料表：
 
 ```sql
--- 1. 學生基本與特徵資料表
+-- 1. 學生資料表 (Students)
 CREATE TABLE students (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    student_number VARCHAR(50) UNIQUE NOT NULL,      -- 學號 (建立索引)
+    student_number VARCHAR(50) UNIQUE NOT NULL,      -- 學號 (有索引)
     name VARCHAR(100) NOT NULL,                      -- 姓名
     avatar_url TEXT,                                 -- 頭像 (Base64 或 網址)
     face_features JSONB,                             -- 128 維人臉特徵向量 (JSON)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. 課程/點名批次表
+-- 2. 點名批次/課程課堂表 (Attendance Sessions)
 CREATE TABLE attendance_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     class_name VARCHAR(150) NOT NULL,                -- 課堂/活動名稱
@@ -107,17 +99,17 @@ CREATE TABLE attendance_sessions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. 學生點名紀錄表
+-- 3. 點名紀錄表 (Attendance Records)
 CREATE TABLE attendance_records (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID REFERENCES attendance_sessions(id) ON DELETE CASCADE,
     student_id UUID REFERENCES students(id) ON DELETE CASCADE,
     check_in_time TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    status VARCHAR(20) DEFAULT 'present' NOT NULL,   -- 出勤狀態 ('present' | 'late' | 'absent')
-    confidence DOUBLE PRECISION DEFAULT 1.0,         -- AI 置信度 (0.0 ~ 1.0)
-    photo_url TEXT,                                  -- 當下快照 URL
+    status VARCHAR(20) DEFAULT 'present' NOT NULL,   -- 狀態 ('present' | 'late' | 'absent')
+    confidence DOUBLE PRECISION DEFAULT 1.0,         -- AI 辨識置信度 (0.0 ~ 1.0)
+    photo_url TEXT,                                  -- 簽到快照連結
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE (session_id, student_id)                  -- 單一課堂不可重複點名
+    UNIQUE (session_id, student_id)                  -- 單一課堂中學生不會重複簽到
 );
 ```
 
@@ -125,48 +117,35 @@ CREATE TABLE attendance_records (
 
 ## 🚀 快速開始 (Getting Started)
 
-### 步驟 1：複製並進入專案目錄
-```bash
-git clone https://github.com/FocalZoe/attendance-frontend.git
-cd attendance-frontend
-```
-> *(備註：若您是在本地整合專案中，請確保 `cd` 進到 `frontend` 子資料夾。)*
+### 1. 安裝與執行
 
-### 步驟 2：安裝相依套件
+請在 `frontend` 子目錄下執行以下指令：
+
 ```bash
+# 安裝相依套件
 npm install
-```
 
-### 步驟 3：運行本地開發伺服器
-```bash
+# 運行本地開發伺服器
 npm run dev
 ```
-瀏覽器將自動開啟或提示存取 `http://localhost:5173`。
+瀏覽器將會開啟 `http://localhost:5173`。
+
+### 2. 配置環境變數 (選填，用於開發環境連線)
+
+為了避免每次重新開啟網頁都需要手動在 UI 中設定 API 金鑰，您可以在 `frontend/` 目錄下建立一個 `.env` 檔案，Vite 會自動讀取並進行連線設定：
+
+```env
+VITE_SUPABASE_URL=https://your-supabase-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
 
 ---
 
-## 🔌 雲端 Supabase 串接指引
+## 📡 邊緣端/AI 辨識端 API 連接說明
 
-若要將系統從「展示模擬模式」切換至「Supabase 連線模式」，請按照下列步驟操作：
+邊緣端的 AI 點名程式（例如執行 [yolo_attendance.py](../ai/yolo_attendance.py) 的電腦）會在識別成功後，對 Supabase 的 RESTful API 發送 HTTPS POST 請求：
 
-1. **建立 Supabase 專案**：登入 [Supabase 平台](https://supabase.com/) 新增專案。
-2. **執行 SQL 初始化**：進入 Supabase 後台的 **SQL Editor**，複製專案中 [/supabase/schema.sql](https://github.com/FocalZoe/attendance-frontend/blob/main/supabase/schema.sql) 的內容並點擊 **Run**。
-3. **開啟即時監聽 (Realtime)**：
-   - 前往 Supabase 後台 -> **Database** -> **Replication**。
-   - 在 `Source` 中編輯表格，啟用 `attendance_records` 資料表的 Realtime 廣播權限。
-4. **填寫連線金鑰**：
-   - 在網頁前端點選左下角的 **設定 (Settings)**。
-   - 將運作模式切換為 **「Supabase 連線模式」**。
-   - 貼上您專案的 `Project URL` 與 `Anon Key`（可於 Supabase 後台 Project Settings -> API 取得）。
-   - 點擊 **儲存設定**。若顯示綠色「已成功連接雲端資料庫」標誌即表示設定成功！
-
----
-
-## 📡 硬體/AI 識別端上傳介面 (API Integration for Hardware/Python)
-
-Supabase 基於 PostgreSQL 會自動生成對應的 RESTful API。您的硬體端（如 Ameba 開發板）或 Python 辨識程式（如 YOLO 點名腳本）只需要對資料庫發送標準的 **HTTPS POST** 請求。
-
-### 📡 請求端點
+### 📡 請求端點 (POST Endpoint)
 ```http
 POST https://<YOUR_SUPABASE_PROJECT_ID>.supabase.co/rest/v1/attendance_records
 ```
@@ -223,4 +202,4 @@ frontend/
 
 ## 📄 授權條款 (License)
 
-本專案採用 **CC0 1.0 Universal (公有領域 / Public Domain)** 授權條款 - 詳情請參閱 [LICENSE](https://github.com/FocalZoe/attendance-frontend/blob/main/LICENSE) 檔案。
+本專案採用 **CC0 1.0 Universal (公有領域 / Public Domain)** 授權條款 - 詳情請參閱 [LICENSE](LICENSE) 檔案。
